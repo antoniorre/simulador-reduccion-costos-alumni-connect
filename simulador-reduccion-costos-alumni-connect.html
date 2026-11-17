@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simulador de reducción de costos - Alumni Connect</title>
+  <style>
+    :root {
+      --ink: #18233a;
+      --muted: #5a677c;
+      --line: #d7deea;
+      --surface: #ffffff;
+      --soft: #f4f7fb;
+      --blue: #1e5aa8;
+      --red: #bb2a2a;
+      --orange: #b76800;
+      --green: #1f7a50;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--soft);
+      font-family: Aptos, Calibri, Arial, sans-serif;
+      line-height: 1.45;
+    }
+    main { max-width: 1180px; margin: 0 auto; padding: 28px 20px 48px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: 28px; margin-bottom: 6px; }
+    h2 { font-size: 21px; margin-bottom: 12px; }
+    h3 { font-size: 16px; margin-bottom: 8px; }
+    .lead { color: var(--muted); max-width: 900px; margin-bottom: 22px; }
+    .notice {
+      border-left: 4px solid var(--orange);
+      background: #fff8e8;
+      padding: 12px 14px;
+      margin: 18px 0 24px;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .stat {
+      background: var(--soft);
+      border-left: 4px solid var(--blue);
+      padding: 10px 12px;
+    }
+    .stat .label { display: block; color: var(--muted); font-size: 13px; }
+    .stat strong { font-size: 21px; font-variant-numeric: tabular-nums; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 13px; margin-top: 9px; }
+    .dot { width: 12px; height: 12px; display: inline-block; vertical-align: -1px; margin-right: 5px; border-radius: 2px; }
+    .dot-critical { background: var(--red); }
+    .dot-accelerated { background: var(--orange); }
+    .dot-normal { background: #8290a5; }
+    .network-wrap { overflow-x: auto; padding-bottom: 8px; }
+    svg { display: block; min-width: 1650px; background: #fbfcfe; border: 1px solid var(--line); }
+    .edge { stroke: #9aa7b8; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+    .edge-critical { stroke: var(--red); stroke-width: 2.5; }
+    .network-node rect { fill: #fff; stroke: #78869a; stroke-width: 1.4; }
+    .network-node.critical rect { stroke: var(--red); stroke-width: 2.4; }
+    .network-node.accelerated rect { fill: #fff2df; }
+    .network-node text { font-size: 12px; text-anchor: middle; fill: var(--ink); }
+    .network-node .duration { font-size: 10px; fill: var(--muted); }
+    .network-title { font-size: 18px; font-weight: 700; fill: var(--ink); }
+    .control-grid {
+      display: grid;
+      grid-template-columns: minmax(230px, 1fr) auto auto;
+      align-items: end;
+      gap: 12px;
+    }
+    label { display: block; font-weight: 600; font-size: 14px; }
+    input[type="range"] { width: 100%; accent-color: var(--blue); }
+    .small { color: var(--muted); font-size: 13px; }
+    .btn {
+      appearance: none;
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid #9aa7b8;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .btn:hover { filter: brightness(.96); }
+    .formula {
+      margin: 12px 0 0;
+    }
+    .blackboard {
+      position: relative;
+      overflow: hidden;
+      color: #f6f4e8;
+      background: #143c38;
+      border: 8px solid #8d6339;
+      border-radius: 14px;
+      padding: 24px;
+      margin: 20px 0;
+      box-shadow: 0 7px 18px rgba(41, 28, 15, .18);
+    }
+    .blackboard::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: .18;
+      background-image: repeating-linear-gradient(0deg, transparent 0 31px, rgba(255,255,255,.14) 32px, transparent 33px);
+    }
+    .blackboard > * { position: relative; }
+    .blackboard h2 { color: #fffdf5; margin-bottom: 5px; }
+    .board-lead { color: #dff0d8; max-width: 900px; }
+    .board-path { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; margin: 16px 0; }
+    .board-card { background: rgba(6, 27, 24, .38); border: 1px dashed #d2e6c8; padding: 14px; border-radius: 9px; }
+    .board-card b { color: #ffeb9c; display: block; margin-bottom: 5px; }
+    .chalk-number { display: inline-grid; place-items: center; width: 27px; height: 27px; margin-right: 7px; border: 2px solid #ffeb9c; border-radius: 50%; color: #ffeb9c; font-weight: 800; }
+    .symbol-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .symbol { background: rgba(255,255,255,.1); border-radius: 7px; padding: 9px; font-size: 13px; }
+    .symbol strong { color: #ffeb9c; }
+    .equation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .equation { border: 1px solid var(--line); border-radius: 9px; background: #fbfcfe; padding: 14px; }
+    .equation-title { color: var(--blue); font-weight: 800; font-size: 14px; margin-bottom: 5px; }
+    .equation-rule { font-size: 18px; font-weight: 800; color: var(--ink); margin: 4px 0 7px; }
+    .equation-explain { color: var(--muted); font-size: 13px; }
+    .worked-example { grid-column: 1 / -1; background: #fff8e8; border-left: 4px solid var(--orange); padding: 13px 14px; border-radius: 0 8px 8px 0; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 7px; border-bottom: 1px solid var(--line); vertical-align: middle; text-align: left; }
+    th { background: #eef3f9; font-weight: 700; white-space: nowrap; }
+    td.number, th.number { text-align: right; font-variant-numeric: tabular-nums; }
+    tr.critical-row td:first-child { border-left: 4px solid var(--red); }
+    tr.accelerated-row { background: #fff8ee; }
+    .mini-input { width: 84px; padding: 5px; border: 1px solid #aeb9c8; border-radius: 4px; font: inherit; text-align: right; }
+    .route {
+      padding: 10px 12px;
+      background: #fff3f3;
+      border-left: 4px solid var(--red);
+      overflow-wrap: anywhere;
+      font-family: inherit;
+      font-size: 13px;
+      margin: 8px 0 12px;
+    }
+    .step-list { display: grid; gap: 10px; }
+    .step {
+      display: grid;
+      grid-template-columns: 68px minmax(180px, 1fr) minmax(180px, 1.2fr) 160px;
+      gap: 12px;
+      align-items: start;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .step:last-child { border-bottom: 0; }
+    .step strong { font-variant-numeric: tabular-nums; }
+    .tag { display: inline-block; background: #edf3fb; color: var(--blue); padding: 3px 7px; border-radius: 999px; font-size: 12px; }
+    .warning { color: #9a3d00; font-weight: 700; }
+    details { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+    summary { cursor: pointer; font-weight: 700; }
+    ol, ul { margin: 8px 0 0 20px; padding: 0; }
+    li { margin: 5px 0; }
+    .status { min-height: 20px; margin-top: 10px; color: var(--green); font-weight: 600; }
+    @media (max-width: 760px) {
+      main { padding: 20px 12px 36px; }
+      .stats { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+      .control-grid { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 1fr; gap: 5px; }
+      h1 { font-size: 24px; }
+      .board-path, .symbol-grid, .equation-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Simulación de reducción de plazo y costo</h1>
+    <p class="lead">Proyecto: <strong>Alumni Connect - Plataforma de Vinculación y Seguimiento de Egresados</strong>. El cálculo usa la red AON de 29 paquetes del informe y aplica el método de intercambio costo-tiempo (crashing).</p>
+
+    <div class="notice">
+      <strong>Importante:</strong> esta simulación trabaja únicamente con <strong>días laborables completos</strong>. Las duraciones, precedencias y costos normales provienen del informe corregido: 26 días de proyecto y 42 días-persona. El costo marginal y el máximo reducible son <strong>supuestos de simulación</strong>; deben validarse con cotizaciones reales antes de comprometer gasto adicional.
+    </div>
+
+    <section class="blackboard" aria-label="Pizarra de explicación del método">
+      <h2>Pizarra: ¿qué se hace antes de reducir un día?</h2>
+      <p class="board-lead">No se elige una tarea al azar. Primero se entiende la red, se ubica el camino que fija la fecha final y recién se compara el costo de acelerar.</p>
+      <div class="board-path">
+        <div class="board-card"><b><span class="chalk-number">1</span>Medir la red</b>Se conectan las actividades por sus predecesoras y se obtiene la duración normal: <strong>26 días</strong>.</div>
+        <div class="board-card"><b><span class="chalk-number">2</span>Encontrar la ruta crítica</b>Son las actividades con holgura cero. Si una de ellas se atrasa, se atrasa todo el proyecto.</div>
+        <div class="board-card"><b><span class="chalk-number">3</span>Decidir y recalcular</b>Se acelera un día la alternativa crítica más conveniente, se suma su costo y se vuelve a calcular la red.</div>
+      </div>
+      <div class="symbol-grid">
+        <div class="symbol"><strong>Duración normal</strong><br>días que tarda la tarea sin acelerar.</div>
+        <div class="symbol"><strong>Costo normal</strong><br>pago del paquete tal como está planificado.</div>
+        <div class="symbol"><strong>Costo marginal</strong><br>monto adicional para ganar un día.</div>
+        <div class="symbol"><strong>Holgura</strong><br>días que una tarea puede esperar sin atrasar el cierre.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Paso A. Esquema de la red y ruta crítica</h2>
+      <p class="small">Rojo: actividad crítica. Naranja: actividad acelerada en el escenario calculado. Cada caja muestra código y duración vigente, en días laborables.</p>
+      <div class="network-wrap" aria-label="Diagrama de red AON">
+        <svg id="network" viewBox="0 0 1650 560" role="img" aria-label="Red AON del proyecto con ruta crítica"></svg>
+      </div>
+      <div class="legend">
+        <span><i class="dot dot-critical"></i>Ruta crítica actual</span>
+        <span><i class="dot dot-accelerated"></i>Actividad acelerada</span>
+        <span><i class="dot dot-normal"></i>Actividad con holgura</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Paso B. Tabla base para acelerar actividades</h2>
+      <p class="small">El “costo marginal” es el costo adicional por reducir un día laboral. La regla es comparar solo las actividades que estén en la ruta crítica vigente; acelerar una actividad con holgura no reduce la fecha final.</p>
+      <div class="table-wrap">
+        <table aria-label="Tabla de duraciones y costos para acelerar">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Actividad</th>
+              <th>Predecesora(s)</th>
+              <th class="number">Duración normal (d)</th>
+              <th class="number">Costo normal (S/)</th>
+              <th class="number">Costo marginal (S/ por d)</th>
+              <th class="number">Máx. reducible (d)</th>
+              <th class="number">Duración mínima (d)</th>
+            </tr>
+          </thead>
+          <tbody id="taskRows"></tbody>
+        </table>
+      </div>
+      <p class="small">La unidad es un día laboral completo. No se usan horas, medios días ni valores decimales. Solo se puede acelerar una actividad si todavía queda al menos un día completo como duración mínima.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Paso C. Simulador de decisión</h2>
+      <div class="control-grid">
+        <div>
+          <label for="goal">Reducción deseada: <span id="goalValue">2</span> días laborables</label>
+          <input id="goal" type="range" min="0" max="8" step="1" value="2">
+          <div class="small">Selecciona cuántos días quieres recortar a la duración calculada por la red AON.</div>
+        </div>
+        <button class="btn primary" id="runButton" type="button">Calcular escenario</button>
+        <button class="btn" id="parallelButton" type="button">Ver caso de rutas paralelas</button>
+      </div>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+      <div class="stats" id="stats"></div>
+      <h3>Ruta(s) crítica(s) resultante(s)</h3>
+      <div id="routes"></div>
+      <h3>Cómo se interpreta cada operación</h3>
+      <div id="math" class="formula"></div>
+      <h3>Secuencia de evaluación y decisión</h3>
+      <div id="steps" class="step-list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Guion para explicar la simulación</h2>
+      <ol>
+        <li>Se calcula la red AON original con las duraciones normales. La duración inicial es <strong>26 días laborables</strong>.</li>
+        <li>Se identifican las actividades de holgura cero: esa es la ruta crítica. Solo ellas pueden reducir la fecha final en ese instante.</li>
+        <li>Se elige la actividad crítica con el menor costo marginal que todavía pueda acelerarse. Se reduce <strong>un día completo</strong> y se suma su costo adicional.</li>
+        <li>Se recalculan inicio temprano, fin temprano, inicio tardío, fin tardío y holguras. La ruta crítica puede cambiar.</li>
+        <li>Si existe una sola ruta crítica, basta acelerar la alternativa de menor costo de esa ruta. Si existen rutas críticas paralelas, se debe acelerar una actividad de cada ruta crítica, salvo que haya una actividad común a todas ellas.</li>
+        <li>El proceso termina cuando se alcanza la reducción solicitada, cuando no queda capacidad de aceleración o cuando el costo deja de ser justificable.</li>
+      </ol>
+      <details open>
+        <summary>Cómo interpretar el botón “Ver caso de rutas paralelas”</summary>
+        <p class="small">Ese escenario lleva la red a un punto donde aparecen varias rutas críticas. El simulador muestra que ya no es válido escoger solo la actividad más barata de una rama: hay que escoger un conjunto de actividades que cubra todas las rutas críticas. Si una actividad es compartida por todas ellas, acelerarla una vez sí puede acortar el proyecto completo.</p>
+      </details>
+      <details>
+        <summary>Texto breve para colocar en tu informe</summary>
+        <p>Se efectuó una simulación de intercambio costo-tiempo sobre la red AON del proyecto. En cada iteración se identificó la ruta crítica vigente y se aceleró la actividad crítica, o el conjunto de actividades críticas paralelas, que generaba el menor costo marginal por día de reducción. Después de cada decisión se recalcularon los tiempos tempranos, tardíos y holguras, debido a que la ruta crítica puede cambiar. Los costos marginales y límites de aceleración corresponden a supuestos de simulación que deberán validarse mediante cotizaciones reales antes de comprometer presupuesto adicional.</p>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var unit = 1;
+      var epsilon = 0.00001;
+      var tasks = [
+        { id: '1.1.1', name: 'Acta de constitución', pred: [], normal: 1, cost: 360, rate: 0, cap: 0 },
+        { id: '1.1.2', name: 'Documento de alcance', pred: ['1.1.1'], normal: 1, cost: 360, rate: 0, cap: 0 },
+        { id: '1.1.3', name: 'Interesados y comunicaciones', pred: ['1.1.2'], normal: 1, cost: 360, rate: 0, cap: 0 },
+        { id: '1.1.4', name: 'Planificación del proyecto', pred: ['1.1.3'], normal: 1, cost: 360, rate: 0, cap: 0 },
+        { id: '1.2.1', name: 'Levantamiento de requisitos', pred: ['1.1.2'], normal: 2, cost: 560, rate: 350, cap: 1 },
+        { id: '1.2.2', name: 'Product backlog priorizado', pred: ['1.2.1'], normal: 1, cost: 280, rate: 0, cap: 0 },
+        { id: '1.2.3', name: 'Modelo de datos', pred: ['1.2.2'], normal: 2, cost: 560, rate: 360, cap: 1 },
+        { id: '1.2.4', name: 'Prototipos de interfaz', pred: ['1.2.1'], normal: 2, cost: 480, rate: 330, cap: 1 },
+        { id: '1.2.5', name: 'Entorno de desarrollo', pred: ['1.2.1'], normal: 1, cost: 280, rate: 0, cap: 0 },
+        { id: '1.2.6', name: 'Carga inicial de la base histórica', pred: ['1.2.3'], normal: 3, cost: 840, rate: 460, cap: 2 },
+        { id: '1.3.1', name: 'Integración con la API institucional', pred: ['1.2.5'], normal: 2, cost: 560, rate: 400, cap: 1 },
+        { id: '1.3.2', name: 'Registro de egresado validado', pred: ['1.3.3', '1.2.6'], normal: 2, cost: 560, rate: 400, cap: 1 },
+        { id: '1.3.3', name: 'Autenticación y roles', pred: ['1.3.1'], normal: 2, cost: 560, rate: 400, cap: 1 },
+        { id: '1.4.1', name: 'Perfil del egresado', pred: ['1.3.2', '1.2.4'], normal: 1, cost: 280, rate: 0, cap: 0 },
+        { id: '1.4.2', name: 'Situación laboral', pred: ['1.4.1'], normal: 2, cost: 560, rate: 390, cap: 1 },
+        { id: '1.4.3', name: 'Privacidad y consentimiento', pred: ['1.4.1'], normal: 1, cost: 280, rate: 0, cap: 0 },
+        { id: '1.5.1', name: 'Gestión de ofertas laborales', pred: ['1.4.1'], normal: 2, cost: 480, rate: 330, cap: 1 },
+        { id: '1.5.2', name: 'Consulta de ofertas', pred: ['1.5.1'], normal: 1, cost: 240, rate: 0, cap: 0 },
+        { id: '1.5.3', name: 'Encuestas de satisfacción', pred: ['1.4.2'], normal: 2, cost: 560, rate: 400, cap: 1 },
+        { id: '1.6.1', name: 'Directorio de egresados', pred: ['1.3.2'], normal: 1, cost: 360, rate: 0, cap: 0 },
+        { id: '1.6.2', name: 'Indicadores y reportes', pred: ['1.4.2', '1.5.3', '1.6.1'], normal: 2, cost: 560, rate: 360, cap: 1 },
+        { id: '1.6.3', name: 'Notificaciones por correo', pred: ['1.5.1'], normal: 1, cost: 360, rate: 0, cap: 0 },
+        { id: '1.7.1', name: 'Pruebas funcionales y seguridad', pred: ['1.5.2', '1.6.2', '1.6.3'], normal: 2, cost: 480, rate: 350, cap: 1 },
+        { id: '1.7.2', name: 'Pruebas de aceptación', pred: ['1.7.1'], normal: 1, cost: 240, rate: 0, cap: 0 },
+        { id: '1.7.3', name: 'Despliegue', pred: ['1.7.2'], normal: 1, cost: 240, rate: 0, cap: 0 },
+        { id: '1.7.4', name: 'Manuales y documentación', pred: ['1.7.2'], normal: 1, cost: 360, rate: 0, cap: 0 },
+        { id: '1.8.1', name: 'Revisión final y aceptación', pred: ['1.7.3', '1.7.4', '1.1.4'], normal: 1, cost: 360, rate: 0, cap: 0 },
+        { id: '1.8.2', name: 'Lecciones aprendidas', pred: ['1.8.1'], normal: 1, cost: 360, rate: 0, cap: 0 },
+        { id: '1.8.3', name: 'Cierre administrativo', pred: ['1.8.2'], normal: 1, cost: 360, rate: 0, cap: 0 }
+      ];
+
+      var positions = {
+        '1.1.1': [55, 270], '1.1.2': [145, 270], '1.1.3': [235, 80], '1.1.4': [325, 80],
+        '1.2.1': [235, 270], '1.2.2': [325, 270], '1.2.3': [415, 270], '1.2.4': [325, 465],
+        '1.2.5': [415, 465], '1.2.6': [505, 270], '1.3.1': [505, 465], '1.3.3': [595, 465],
+        '1.3.2': [685, 270], '1.4.1': [775, 270], '1.6.1': [775, 75], '1.4.2': [865, 165],
+        '1.4.3': [865, 315], '1.5.1': [865, 465], '1.5.3': [955, 165], '1.6.2': [1045, 165],
+        '1.6.3': [955, 385], '1.5.2': [955, 465], '1.7.1': [1135, 270], '1.7.2': [1225, 270],
+        '1.7.3': [1315, 165], '1.7.4': [1315, 365], '1.8.1': [1405, 270], '1.8.2': [1495, 270],
+        '1.8.3': [1585, 270]
+      };
+
+      var base = calculate(blankState());
+      var active = null;
+
+      function blankState() {
+        var state = {};
+        tasks.forEach(function (task) {
+          state[task.id] = { reduction: 0 };
+        });
+        return state;
+      }
+
+      function formatDay(value) {
+        return Number(value.toFixed(3)).toString();
+      }
+
+      function money(value) {
+        return new Intl.NumberFormat('es-PE', {
+          style: 'currency',
+          currency: 'PEN',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(value);
+      }
+
+      function taskById(id) {
+        return tasks.find(function (task) { return task.id === id; });
+      }
+
+      function calculate(state) {
+        var records = {};
+        var remaining = new Set(tasks.map(function (task) { return task.id; }));
+        var order = [];
+        var successors = {};
+        tasks.forEach(function (task) {
+          records[task.id] = {
+            id: task.id,
+            duration: task.normal - state[task.id].reduction,
+            reduction: state[task.id].reduction
+          };
+          successors[task.id] = [];
+        });
+        tasks.forEach(function (task) {
+          task.pred.forEach(function (predecessor) { successors[predecessor].push(task.id); });
+        });
+        while (remaining.size) {
+          var ready = tasks.filter(function (task) {
+            return remaining.has(task.id) && task.pred.every(function (predecessor) {
+              return order.indexOf(predecessor) !== -1;
+            });
+          });
+          if (!ready.length) { throw new Error('La red contiene una dependencia circular.'); }
+          ready.forEach(function (task) {
+            order.push(task.id);
+            remaining.delete(task.id);
+          });
+        }
+        var es = {}, ef = {}, ls = {}, lf = {}, slack = {};
+        order.forEach(function (id) {
+          var task = taskById(id);
+          es[id] = task.pred.length ? Math.max.apply(null, task.pred.map(function (p) { return ef[p]; })) : 0;
+          ef[id] = es[id] + records[id].duration;
+        });
+        var projectDuration = Math.max.apply(null, order.map(function (id) { return ef[id]; }));
+        order.slice().reverse().forEach(function (id) {
+          lf[id] = successors[id].length ? Math.min.apply(null, successors[id].map(function (s) { return ls[s]; })) : projectDuration;
+          ls[id] = lf[id] - records[id].duration;
+          slack[id] = ls[id] - es[id];
+        });
+        var critical = order.filter(function (id) { return Math.abs(slack[id]) < epsilon; });
+        var paths = [];
+        function walk(id, path) {
+          var next = successors[id].filter(function (candidate) {
+            return critical.indexOf(candidate) !== -1 && Math.abs(es[candidate] - ef[id]) < epsilon;
+          });
+          if (!next.length) {
+            if (Math.abs(ef[id] - projectDuration) < epsilon) { paths.push(path); }
+            return;
+          }
+          next.forEach(function (candidate) { walk(candidate, path.concat([candidate])); });
+        }
+        critical.filter(function (id) {
+          return taskById(id).pred.length === 0 && Math.abs(es[id]) < epsilon;
+        }).forEach(function (id) { walk(id, [id]); });
+        return {
+          duration: projectDuration, records: records, order: order, successors: successors,
+          es: es, ef: ef, ls: ls, lf: lf, slack: slack, critical: critical, paths: paths
+        };
+      }
+
+      function bestPlan(calculation, state, delta) {
+        var available = calculation.critical.filter(function (id) {
+          var task = taskById(id);
+          return task.cap - state[id].reduction >= delta - epsilon;
+        });
+        if (!available.length || !calculation.paths.length) { return null; }
+        var best = null;
+        function price(choice) {
+          return choice.reduce(function (total, id) { return total + taskById(id).rate * delta; }, 0);
+        }
+        function cover(covered, chosen) {
+          if (covered.size === calculation.paths.length) {
+            var candidate = {
+              ids: Array.from(chosen).sort(),
+              cost: price(Array.from(chosen))
+            };
+            if (!best || candidate.cost < best.cost - epsilon ||
+                (Math.abs(candidate.cost - best.cost) < epsilon && candidate.ids.length < best.ids.length)) {
+              best = candidate;
+            }
+            return;
+          }
+          if (best && price(Array.from(chosen)) >= best.cost - epsilon) { return; }
+          var pathIndex = 0;
+          while (covered.has(pathIndex)) { pathIndex += 1; }
+          calculation.paths[pathIndex].filter(function (id) { return available.indexOf(id) !== -1; }).forEach(function (id) {
+            var nextCovered = new Set(covered);
+            calculation.paths.forEach(function (path, index) {
+              if (path.indexOf(id) !== -1) { nextCovered.add(index); }
+            });
+            var nextChosen = new Set(chosen);
+            nextChosen.add(id);
+            cover(nextCovered, nextChosen);
+          });
+        }
+        cover(new Set(), new Set());
+        return best;
+      }
+
+      function runScenario(requestedReduction) {
+        var state = blankState();
+        var before = calculate(state);
+        var target = Math.max(0, before.duration - requestedReduction);
+        var log = [];
+        var additional = 0;
+        var guard = 0;
+        while (before.duration > target + epsilon && guard < 500) {
+          guard += 1;
+          var delta = Math.min(unit, before.duration - target);
+          var plan = bestPlan(before, state, delta);
+          if (!plan) { break; }
+          plan.ids.forEach(function (id) { state[id].reduction += delta; });
+          var after = calculate(state);
+          if (after.duration >= before.duration - epsilon) {
+            plan.ids.forEach(function (id) { state[id].reduction -= delta; });
+            break;
+          }
+          additional += plan.cost;
+          log.push({
+            iteration: log.length + 1,
+            delta: delta,
+            ids: plan.ids,
+            cost: plan.cost,
+            cumulative: additional,
+            before: before.duration,
+            after: after.duration,
+            pathCount: before.paths.length,
+            paths: before.paths
+          });
+          before = after;
+        }
+        return {
+          state: state,
+          final: before,
+          log: log,
+          reached: before.duration <= target + epsilon,
+          requestedReduction: requestedReduction,
+          achievedReduction: base.duration - before.duration,
+          additional: additional
+        };
+      }
+
+      function groupedLog(log) {
+        var groups = [];
+        log.forEach(function (row) {
+          var key = row.ids.join('|');
+          var last = groups[groups.length - 1];
+          if (last && last.key === key) {
+            last.lastIteration = row.iteration;
+            last.delta += row.delta;
+            last.cost += row.cost;
+            last.cumulative = row.cumulative;
+            last.after = row.after;
+            return;
+          }
+          groups.push({
+            key: key, firstIteration: row.iteration, lastIteration: row.iteration,
+            ids: row.ids, delta: row.delta, cost: row.cost, cumulative: row.cumulative,
+            before: row.before, after: row.after, pathCount: row.pathCount, paths: row.paths
+          });
+        });
+        return groups;
+      }
+
+      function renderNetwork(calculation, scenario) {
+        var svg = document.getElementById('network');
+        var pieces = [
+          '<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#9aa7b8"></path></marker></defs>',
+          '<text class="network-title" x="26" y="34">Red AON - duración actual: ' + formatDay(calculation.duration) + ' días laborables</text>',
+          '<text x="25" y="530" font-size="13" fill="#5a677c">Inicio</text><text x="1610" y="530" font-size="13" fill="#5a677c">Fin</text>'
+        ];
+        var accelerated = scenario ? Object.keys(scenario.state).filter(function (id) {
+          return scenario.state[id].reduction > epsilon;
+        }) : [];
+        tasks.forEach(function (task) {
+          task.pred.forEach(function (predecessor) {
+            var from = positions[predecessor], to = positions[task.id];
+            var isCritical = calculation.critical.indexOf(predecessor) !== -1 &&
+              calculation.critical.indexOf(task.id) !== -1 &&
+              Math.abs(calculation.ef[predecessor] - calculation.es[task.id]) < epsilon;
+            pieces.push('<line class="edge' + (isCritical ? ' edge-critical' : '') + '" x1="' + (from[0] + 68) + '" y1="' + (from[1] + 18) + '" x2="' + (to[0] - 6) + '" y2="' + (to[1] + 18) + '"></line>');
+          });
+        });
+        tasks.forEach(function (task) {
+          var p = positions[task.id], record = calculation.records[task.id];
+          var classes = 'network-node';
+          if (calculation.critical.indexOf(task.id) !== -1) { classes += ' critical'; }
+          if (accelerated.indexOf(task.id) !== -1) { classes += ' accelerated'; }
+          pieces.push(
+            '<g class="' + classes + '" aria-label="' + task.id + ', ' + task.name + ', ' + formatDay(record.duration) + ' días">' +
+            '<rect x="' + p[0] + '" y="' + p[1] + '" width="68" height="36" rx="3"></rect>' +
+            '<text x="' + (p[0] + 34) + '" y="' + (p[1] + 15) + '">' + task.id + '</text>' +
+            '<text class="duration" x="' + (p[0] + 34) + '" y="' + (p[1] + 29) + '">' + formatDay(record.duration) + ' d</text></g>'
+          );
+        });
+        svg.innerHTML = pieces.join('');
+      }
+
+      function renderTable(calculation, scenario) {
+        var body = document.getElementById('taskRows');
+        body.innerHTML = tasks.map(function (task) {
+          var record = calculation.records[task.id];
+          var canReduce = task.cap >= unit;
+          var rowClass = '';
+          if (calculation.critical.indexOf(task.id) !== -1) { rowClass += ' critical-row'; }
+          if (record.reduction > epsilon) { rowClass += ' accelerated-row'; }
+          return '<tr class="' + rowClass + '">' +
+            '<td><strong>' + task.id + '</strong></td>' +
+            '<td>' + task.name + '</td>' +
+            '<td>' + (task.pred.join(', ') || 'Inicio') + '</td>' +
+            '<td class="number">' + formatDay(task.normal) + '</td>' +
+            '<td class="number">' + money(task.cost) + '</td>' +
+            '<td class="number">' + (canReduce ? '<input class="mini-input" data-id="' + task.id + '" data-field="rate" type="number" min="0" step="1" value="' + task.rate + '" aria-label="Costo marginal de ' + task.id + '">' : '<span class="small">No reducible</span>') + '</td>' +
+            '<td class="number">' + (canReduce ? '<input class="mini-input" data-id="' + task.id + '" data-field="cap" type="number" min="0" max="' + (task.normal - unit) + '" step="1" value="' + task.cap + '" aria-label="Máximo reducible de ' + task.id + '">' : '0') + '</td>' +
+            '<td class="number">' + formatDay(task.normal - task.cap) + '</td></tr>';
+        }).join('');
+        body.querySelectorAll('input').forEach(function (input) {
+          input.addEventListener('change', function () {
+            var task = taskById(input.dataset.id);
+            var value = Number(input.value);
+            if (!Number.isFinite(value) || value < 0) { value = 0; }
+            if (input.dataset.field === 'cap') { value = Math.min(value, task.normal - unit); }
+            task[input.dataset.field] = value;
+            render();
+          });
+        });
+      }
+
+      function renderStats(scenario) {
+        var normalCost = tasks.reduce(function (sum, task) { return sum + task.cost; }, 0);
+        var stats = [
+          ['Duración AON inicial', formatDay(base.duration) + ' d'],
+          ['Duración simulada', formatDay(scenario.final.duration) + ' d'],
+          ['Costo adicional', money(scenario.additional)],
+          ['Costo directo simulado', money(normalCost + scenario.additional)]
+        ];
+        document.getElementById('stats').innerHTML = stats.map(function (stat) {
+          return '<div class="stat"><span class="label">' + stat[0] + '</span><strong>' + stat[1] + '</strong></div>';
+        }).join('');
+      }
+
+      function renderRoutes(scenario) {
+        var routes = document.getElementById('routes');
+        if (!scenario.final.paths.length) {
+          routes.innerHTML = '<p class="warning">No fue posible identificar rutas críticas.</p>';
+          return;
+        }
+        routes.innerHTML = scenario.final.paths.map(function (path, index) {
+          return '<div class="route">Ruta ' + (index + 1) + ': ' + path.join(' → ') + '</div>';
+        }).join('');
+      }
+
+      function renderMath(scenario) {
+        var first = scenario.log[0];
+        var normalCost = tasks.reduce(function (sum, task) { return sum + task.cost; }, 0);
+        var example = first ? first.ids.map(function (id) {
+          var task = taskById(id);
+          return '<strong>' + id + ' · ' + task.name + ':</strong> ' + money(task.rate) + ' × ' + formatDay(first.delta) + ' día = <strong>' + money(task.rate * first.delta) + '</strong>';
+        }).join('<br>') : 'No se solicitó ninguna reducción; la red conserva sus 26 días.';
+        document.getElementById('math').innerHTML =
+          '<div class="equation-grid">' +
+            '<div class="equation"><div class="equation-title">1. Duración de la actividad</div><div class="equation-rule">Duración nueva = duración normal − días reducidos</div><div class="equation-explain">Ejemplo: una tarea de 3 días puede pasar a 2 días si se acelera una vez. Nunca baja de 1 día.</div></div>' +
+            '<div class="equation"><div class="equation-title">2. Costo adicional</div><div class="equation-rule">Costo adicional = costo marginal × días acelerados</div><div class="equation-explain">El costo marginal es el pago extra necesario para obtener un día menos en esa actividad.</div></div>' +
+            '<div class="equation"><div class="equation-title">3. Fecha final de la red</div><div class="equation-rule">Fin temprano = inicio temprano + duración</div><div class="equation-explain">El inicio temprano toma la fecha más tardía de todas las predecesoras. Por eso se respeta la secuencia.</div></div>' +
+            '<div class="equation"><div class="equation-title">4. Holgura</div><div class="equation-rule">Holgura = inicio tardío − inicio temprano</div><div class="equation-explain">Holgura cero significa ruta crítica: acelerar allí sí puede adelantar la fecha de cierre.</div></div>' +
+            '<div class="worked-example"><strong>Primera decisión del escenario:</strong><br>' + example + '<br><span class="small">Costo base de mano de obra: ' + money(normalCost) + '. El simulador suma el costo adicional de cada decisión y vuelve a revisar la ruta crítica.</span></div>' +
+          '</div>';
+      }
+
+      function pathSummary(paths) {
+        if (paths.length === 1) { return '1 ruta crítica'; }
+        return paths.length + ' rutas críticas paralelas';
+      }
+
+      function renderSteps(scenario) {
+        var target = document.getElementById('steps');
+        var groups = groupedLog(scenario.log);
+        if (!groups.length) {
+          target.innerHTML = '<p class="small">No se solicitó reducción.</p>';
+          return;
+        }
+        target.innerHTML = groups.map(function (group) {
+          var labels = group.ids.map(function (id) {
+            var task = taskById(id);
+            return id + ' (' + task.name + ')';
+          }).join(' + ');
+          var iteration = group.firstIteration === group.lastIteration ? 'Paso ' + group.firstIteration :
+            'Pasos ' + group.firstIteration + '–' + group.lastIteration;
+          var parallelNote = group.pathCount > 1 ?
+            '<span class="warning">Se cubren ' + group.pathCount + ' rutas críticas.</span>' :
+            'Se acelera la opción crítica de menor costo.';
+          return '<article class="step">' +
+            '<div><span class="tag">' + iteration + '</span></div>' +
+            '<div><strong>Decisión:</strong><br>' + labels + '<br><span class="small">' + parallelNote + '</span></div>' +
+            '<div><strong>Operación:</strong><br>' + formatDay(group.delta) + ' d; costo adicional ' + money(group.cost) +
+              '<br><span class="small">Acumulado: ' + money(group.cumulative) + '</span></div>' +
+            '<div><strong>Red:</strong><br>' + formatDay(group.before) + ' d → ' + formatDay(group.after) + ' d<br>' +
+              '<span class="small">' + pathSummary(group.paths) + ' antes de recalcular.</span></div>' +
+          '</article>';
+        }).join('');
+      }
+
+      function renderStatus(scenario) {
+        var message = scenario.reached ?
+          'Meta alcanzada: se redujeron ' + formatDay(scenario.achievedReduction) + ' días laborables.' :
+          'La red solo pudo reducirse ' + formatDay(scenario.achievedReduction) + ' días con los límites actuales.';
+        document.getElementById('status').textContent = message;
+      }
+
+      function render() {
+        var requested = Number(document.getElementById('goal').value);
+        document.getElementById('goalValue').textContent = formatDay(requested);
+        base = calculate(blankState());
+        active = runScenario(requested);
+        renderNetwork(active.final, active);
+        renderTable(active.final, active);
+        renderStats(active);
+        renderRoutes(active);
+        renderMath(active);
+        renderSteps(active);
+        renderStatus(active);
+      }
+
+      document.getElementById('goal').addEventListener('input', function () {
+        document.getElementById('goalValue').textContent = formatDay(Number(this.value));
+      });
+      document.getElementById('runButton').addEventListener('click', render);
+      document.getElementById('parallelButton').addEventListener('click', function () {
+        document.getElementById('goal').value = '7.75';
+        render();
+      });
+      render();
+    }());
+  </script>
+</body>
+</html>
